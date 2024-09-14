@@ -5,6 +5,8 @@ const upload = require("./lib/upload");
 const axios = require("axios");
 const fs = require("fs");
 const path = require("path");
+const handleFileUpload = require("./lib/file-upload-util");
+const multer = require("multer");
 
 const app = express();
 app.use(express.json());
@@ -24,6 +26,13 @@ app.use(
   })
 );
 
+const multerParse = multer({
+  dest: "uploads/",
+  filename: (req, file, cb) => {
+    cb(null, file.originalname);
+  },
+});
+
 // app.all("*", function (req, res, next) {
 //   const origin = cors.origin.includes(req.header("origin").toLowerCase())
 //     ? req.headers.origin
@@ -37,9 +46,51 @@ app.use(
 // });
 
 //app.get("/", (req, res) => {
-  //console.log("hello");
-  //res.json({ message: "Hello World!" });
+//console.log("hello");
+//res.json({ message: "Hello World!" });
 //});
+
+app.post(
+  "/upload-thumbnail",
+  multerParse.fields([
+    {
+      name: "attachment",
+    },
+  ]),
+  async (req, res) => {
+    const attachment = req.files?.attachment[0];
+    const fileName = req.files?.attachment[0].filename;
+    const filePath = path.resolve(__dirname, "uploads", fileName);
+    if (!attachment) {
+      res.status(400).json({ message: "No file uploaded" });
+    }
+    const uploadResponse = await handleFileUpload(attachment);
+    if (uploadResponse.success) {
+      fs.unlink(filePath, (err) => {
+        if (err) {
+          console.error(err);
+          return;
+        }
+        console.log("File deleted successfully");
+      });
+      res.status(201).json({
+        message: "Thumbnail uploaded",
+        url: `https://master-academy-thumb.b-cdn.net/${uploadResponse.uniqueFilename}`,
+      });
+    } else {
+      fs.unlink(filePath, (err) => {
+        if (err) {
+          console.error(err);
+          return;
+        }
+        console.log("File deleted successfully");
+      });
+      res.status(500).json({
+        message: "File upload failed",
+      });
+    }
+  }
+);
 
 app.post("/upload", upload.single("file"), async (req, res) => {
   const videoId = req.headers["video-id"];
@@ -82,7 +133,7 @@ app.post("/upload", upload.single("file"), async (req, res) => {
     })
     .catch((error) => {
       console.log(error.message);
-      res.json({ message: "File upload failed", success: false, error:  error});
+      res.json({ message: "File upload failed", success: false, error: error });
     });
 });
 
