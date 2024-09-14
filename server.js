@@ -75,7 +75,7 @@ app.post(
       });
       res.status(201).json({
         message: "Thumbnail uploaded",
-        url: `https://master-academy-thumb.b-cdn.net/${uploadResponse.uniqueFilename}`,
+        url: `https://${process.env.BUNNY_PULL_ZONE_HOST}/${uploadResponse.uniqueFilename}`,
       });
     } else {
       fs.unlink(filePath, (err) => {
@@ -91,6 +91,28 @@ app.post(
     }
   }
 );
+
+app.post("/delete-thumbnail", async (req, res) => {
+  // const filename = req.body.url;
+  const fileName = req.body.url.split("/")[3];
+  axios
+    .delete(
+      `https://${process.env.BUNNY_STORAGE_HOST}/${process.env.BUNNY_STORAGE_NAME}/${fileName}`,
+      {
+        headers: {
+          AccessKey: process.env.BUNNY_STORAGE_ACCESS_KEY,
+        },
+      }
+    )
+    .then((response) => {
+      console.log(response.data);
+      res.json({ message: "Thumbnail deleted", success: true });
+    })
+    .catch((error) => {
+      console.log(error.message);
+      res.json({ message: "Thumbnail deletion failed", success: false });
+    });
+});
 
 app.post("/upload", upload.single("file"), async (req, res) => {
   const videoId = req.headers["video-id"];
