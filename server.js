@@ -71,11 +71,11 @@ app.post(
           console.error(err);
           return;
         }
-        console.log("File deleted successfully");
       });
       res.status(201).json({
         message: "Thumbnail uploaded",
         url: `https://${process.env.BUNNY_PULL_ZONE_HOST}/${uploadResponse.uniqueFilename}`,
+        success: true,
       });
     } else {
       fs.unlink(filePath, (err) => {
@@ -83,17 +83,16 @@ app.post(
           console.error(err);
           return;
         }
-        console.log("File deleted successfully");
       });
       res.status(500).json({
         message: "File upload failed",
+        success: false,
       });
     }
   }
 );
 
 app.post("/delete-thumbnail", async (req, res) => {
-  // const filename = req.body.url;
   const fileName = req.body.url.split("/")[3];
   axios
     .delete(
