@@ -89,8 +89,10 @@ app.use("/api",checkIsValid, userRoute);
 // Route to handle file uploads
 app.post("/upload", checkIsValid,upload.array("files[]"), async (req, res) => {
   try {
+    
     if (req.files.length < 0)
       return res.status(400).json({ message: "No file uploaded" });
+    req.session.fileUpload = req.files
     const getUser = await User.findOne({ _id: req.session.userId });
     if (!getUser)
       return res
@@ -108,38 +110,55 @@ app.post("/upload", checkIsValid,upload.array("files[]"), async (req, res) => {
             fs.unlink(filePath, (err) => {
               if (err) {
                 console.error(err);
+                // req.session.fileUpload =[...req.session.fileUpload.filter(fil => fil.filename !== req.files[i].filename)]
                 return reject({ status: "error", message: err });
               }
+             
               console.log("File deleted successfully");
             });
-
-            listUpload.push({
-              fileType: req.files[i].mimetype,
-              url: `https://${process.env.BUNNY_PULL_ZONE_HOST}/${uploadResponse.uniqueFilename}`,
-              date: date(),
-            });
+            req.session.fileUpload =[...req.session.fileUpload.filter(fil => fil.filename !== req.files[i].filename)]
+            getUser.upload.push(
+              {
+                fileType: req.files[i].mimetype,
+                url: `https://${process.env.BUNNY_PULL_ZONE_HOST}/${uploadResponse.uniqueFilename}`,
+                date: date(),
+              }
+            );
+            console.log(req.session.fileUpload);
+            await getUser.save();
+            // listUpload.push({
+            //   fileType: req.files[i].mimetype,
+            //   url: `https://${process.env.BUNNY_PULL_ZONE_HOST}/${uploadResponse.uniqueFilename}`,
+            //   date: date(),
+            // });
           } else {
             fs.unlink(filePath, (err) => {
               if (err) {
+                // req.session.fileUpload =[...req.session.fileUpload.filter(fil => fil.filename !== req.files[i].filename)]
                 return reject({ status: "error", message: err });
               }
+              // req.session.fileUpload =[...req.session.fileUpload.filter(fil => fil.filename !== req.files[i].filename)]
               console.log("File deleted successfully");
             });
+            // req.session.fileUpload =[...req.session.fileUpload.filter(fil => fil.filename !== req.files[i].filename)]
             return reject({ status: "error", message: err });
           }
+          // req.session.fileUpload =[...req.session.fileUpload.filter(fil => fil.filename !== req.files[i].filename)]
           resolve({ status: "success", message: "File deleted successfully" });
         })();
       });
+      
       if (getPromise.status == "error") return res.json(getPromise);
     }
 
-    getUser.upload.push(...listUpload);
-    await getUser.save();
+    // getUser.upload.push(...listUpload);
+    // await getUser.save();
     return await res.status(200).json({
       status:"success",
       message: "Files uploaded successfully!",
       files: listUpload,
-      user:getUser
+      user:getUser,
+      balanceUpload:req.session.fileUpload
     });
   } catch (error) {
     console.log(error);
